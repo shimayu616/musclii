@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "45968954745",
+    "project_id": "musclii",
+    "storage_bucket": "musclii.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:45968954745:android:950c2e3cafda93c6230ba8",
+        "android_client_info": {
+          "package_name": "com.example.musclii2"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDadoLPmcD1BLbZ4YV48CnvBYegUd9hl70"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
