@@ -1,6 +1,26 @@
 import 'package:flutter/material.dart';
 import 'dart:async';
 import 'dart:math';
+import 'login_page.dart';
+
+void main() {
+  runApp(const MyApp());
+}
+
+class MyApp extends StatelessWidget {
+  const MyApp({super.key});
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: '筋トレログイン',
+      theme: ThemeData(
+        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
+      ),
+      home: const LoginPage(), // ここをLoginPageに
+    );
+  }
+}
+
 
 class SavedTimerSet {
   String name;
@@ -19,23 +39,6 @@ class TimerSetHistoryEntry {
   });
 }
 
-void main() {
-  runApp(const MyApp());
-}
-
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Saved Timer Sets',
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepOrange),
-      ),
-      home: const TimerSetListPage(),
-    );
-  }
-}
 
 class TimerSetListPage extends StatefulWidget {
   const TimerSetListPage({super.key});

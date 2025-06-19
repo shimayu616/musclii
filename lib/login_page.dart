@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'main_page.dart';
+import 'main.dart'; // TimerSetListPageを使うため
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -18,7 +18,7 @@ class _LoginPageState extends State<LoginPage> {
     if (username == 'user' && password == 'pass') {
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (context) => const MainPage()),
+        MaterialPageRoute(builder: (context) => const TimerSetListPage()),
       );
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
