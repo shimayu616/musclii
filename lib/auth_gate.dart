@@ -3,7 +3,7 @@ import 'package:firebase_ui_auth/firebase_ui_auth.dart';
 import 'package:firebase_ui_oauth_google/firebase_ui_oauth_google.dart';
 import 'package:firebase_ui_oauth_apple/firebase_ui_oauth_apple.dart';
 import 'package:flutter/material.dart';
-import 'main_page.dart';
+import 'app_nav.dart';
 
 class AuthGate extends StatelessWidget {
   const AuthGate({super.key});
@@ -13,16 +13,18 @@ class AuthGate extends StatelessWidget {
     return StreamBuilder<fb_auth.User?>(
       stream: fb_auth.FirebaseAuth.instance.authStateChanges(),
       builder: (context, snapshot) {
+     
         if (!snapshot.hasData) {
           return SignInScreen(
             providers: [
               EmailAuthProvider(),
               GoogleProvider(clientId: "YOUR_WEBCLIENT_ID"),
-              AppleProvider(), // Appleログインを使う場合
+              AppleProvider(),
             ],
           );
         }
-        return const TimerSetListPage();
+     
+        return const AppNav();
       },
     );
   }
