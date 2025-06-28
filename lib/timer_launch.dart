@@ -1,13 +1,12 @@
 import 'package:flutter/material.dart';
 import 'dart:async';
 import 'dart:math';
-import 'add_set.dart' as add_set; // For SavedTimerSet
+import 'add_set.dart'; // For SavedTimerSet
 import 'main_page.dart'; // For TimerSetListPage
-import 'timer_history.dart' as history;
-import 'package:shared_preferences/shared_preferences.dart';
+import 'timer_history.dart';
 
 class TimerSetScreen extends StatefulWidget {
-  final add_set.SavedTimerSet timerSet;
+  final SavedTimerSet timerSet;
   const TimerSetScreen({super.key, required this.timerSet});
 
   @override
@@ -159,12 +158,12 @@ class _TimerSetScreenState extends State<TimerSetScreen>
       _pointsGiven = true;
     });
     int points = _secondsList.fold(0, (a, b) => a + b);
-    final entry = history.TimerSetHistoryEntry(
+    final entry = TimerSetHistoryEntry(
       name: widget.timerSet.name,
       completedAt: DateTime.now(),
       totalSeconds: points,
     );
-    await history.saveHistoryEntry(entry);
+    await saveHistoryEntry(entry);
     Future.delayed(const Duration(milliseconds: 1500), () {
       if (mounted) {
         Navigator.of(context).pushAndRemoveUntil(
