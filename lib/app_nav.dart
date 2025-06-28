@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'main_page.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'avatar_select.dart';
 
 class AppNav extends StatefulWidget {
   const AppNav({super.key});
@@ -10,15 +13,46 @@ class AppNav extends StatefulWidget {
 
 class _AppNavState extends State<AppNav> {
   int _currentIndex = 0;
+  String? _avatarPath;
+  String? _avatarName;
 
-  final List<Widget> _pages = [
-    const HomeSamplePage(),
-    const TimerSetListPage(),
-    const ProfileSamplePage(),
-  ];
+  @override
+  void initState() {
+    super.initState();
+    _loadAvatar();
+  }
+
+  Future<void> _loadAvatar() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+    final doc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
+    if (!doc.exists || doc.data()?['avatar'] == null || doc.data()?['avatarName'] == null) {
+      final result = await Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const AvatarSelectPage()),
+      );
+      if (result != true) return;
+      final newDoc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
+      setState(() {
+        _avatarPath = newDoc.data()?['avatar'];
+        _avatarName = newDoc.data()?['avatarName'];
+      });
+    } else {
+      setState(() {
+        _avatarPath = doc.data()?['avatar'];
+        _avatarName = doc.data()?['avatarName'];
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
+    final List<Widget> _pages = [
+      HomeSamplePage(avatarPath: _avatarPath, avatarName: _avatarName, onAvatarUpdated: _loadAvatar),
+      const TimerSetListPage(),
+      const ProfileSamplePage(),
+    ];
+
     return Scaffold(
       body: _pages[_currentIndex],
       bottomNavigationBar: BottomNavigationBar(
@@ -48,14 +82,88 @@ class _AppNavState extends State<AppNav> {
 }
 
 class HomeSamplePage extends StatelessWidget {
-  const HomeSamplePage({super.key});
+  final String? avatarPath;
+  final String? avatarName;
+  final VoidCallback? onAvatarUpdated;
+  const HomeSamplePage({super.key, this.avatarPath, this.avatarName, this.onAvatarUpdated});
 
   @override
   Widget build(BuildContext context) {
-    return const Center(
-      child: Text(
-        'ホーム画面サンプル',
-        style: TextStyle(fontSize: 24),
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          if (avatarPath != null)
+            CircleAvatar(
+              radius: 60,
+              backgroundColor: Colors.white,
+              backgroundImage: AssetImage('lib/media/$avatarPath'),
+            ),
+          if (avatarPath == null)
+            GestureDetector(
+              onTap: () async {
+                final result = await Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const AvatarSelectPage(),
+                  ),
+                );
+                if (result == true && onAvatarUpdated != null) {
+                  onAvatarUpdated!();
+                }
+              },
+              child: Column(
+                children: [
+                  Container(
+                    width: 120,
+                    height: 120,
+                    decoration: BoxDecoration(
+                      color: Colors.grey[100],
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: Colors.blueAccent,
+                        width: 3,
+                        style: BorderStyle.solid,
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.blueAccent.withOpacity(0.2),
+                          blurRadius: 8,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: const Icon(
+                      Icons.person_add_alt_1,
+                      size: 60,
+                      color: Colors.blueAccent,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'アバター未設定\nタップして設定',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.blueAccent,
+                      decoration: TextDecoration.underline,
+                      letterSpacing: 1.2,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          const SizedBox(height: 16),
+          if (avatarName != null && avatarPath != null)
+            Text(
+              avatarName!,
+              style: const TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+        ],
       ),
     );
   }
@@ -75,7 +183,8 @@ class ProfileSamplePage extends StatelessWidget {
           children: [
             const CircleAvatar(
               radius: 48,
-              backgroundImage: AssetImage('assets/profile_placeholder.png'), // 適宜画像を用意
+              backgroundColor: Colors.white,
+              backgroundImage: AssetImage('lib/media/men_3.png'), // 仮画像
             ),
             const SizedBox(height: 16),
             const Text(
@@ -87,7 +196,7 @@ class ProfileSamplePage extends StatelessWidget {
             const SizedBox(height: 24),
             ElevatedButton(
               onPressed: () {
-                // 例: プロフィール編集画面へ遷移など
+                // プロフィール編集画面へ遷移など
               },
               child: const Text('プロフィール編集'),
             ),

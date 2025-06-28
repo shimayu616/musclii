@@ -13,17 +13,16 @@ class AuthGate extends StatelessWidget {
     return StreamBuilder<fb_auth.User?>(
       stream: fb_auth.FirebaseAuth.instance.authStateChanges(),
       builder: (context, snapshot) {
-     
         if (!snapshot.hasData) {
           return SignInScreen(
             providers: [
               EmailAuthProvider(),
-              GoogleProvider(clientId: "YOUR_WEBCLIENT_ID"),
+              GoogleProvider(clientId: "YOUR_WEBCLIENT_ID"), // ←ここはご自身のWebクライアントIDに
               AppleProvider(),
             ],
           );
         }
-     
+        // ログイン済みならAppNavへ
         return const AppNav();
       },
     );
