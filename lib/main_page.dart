@@ -4,9 +4,6 @@ import 'add_set.dart';
 import 'auth_gate.dart';
 import 'timer_launch.dart';
 import 'edit_set.dart';
-import 'timer_history.dart';
-import 'dart:convert';
-import 'package:shared_preferences/shared_preferences.dart';
 
 class TimerSetListPage extends StatefulWidget {
   const TimerSetListPage({super.key});
@@ -15,95 +12,46 @@ class TimerSetListPage extends StatefulWidget {
 }
 
 class _TimerSetListPageState extends State<TimerSetListPage> {
-  final List<SavedTimerSet> _timerSets = [];
-  int _totalPoints = 0;
-  List<TimerSetHistoryEntry> _history = [];
+  List<SavedTimerSet> _timerSets = []; // In-memory only
 
-  @override
-  void initState() {
-    super.initState();
-    _loadTimerSets().then((_) => _loadHistory());
+  void _addSet() async {
+    final result = await Navigator.push<SavedTimerSet>(
+      context,
+      MaterialPageRoute(builder: (context) => const AddSetPage()),
+    );
+    if (result != null) {
+      setState(() {
+        _timerSets.add(result);
+      });
+    }
   }
 
-  Future<void> _saveTimerSets() async {
-    final prefs = await SharedPreferences.getInstance();
-    final setsJson = _timerSets.map((set) => jsonEncode(set.toJson())).toList();
-    await prefs.setStringList('timerSets', setsJson);
-  }
-
-  Future<void> _loadTimerSets() async {
-    final prefs = await SharedPreferences.getInstance();
-    final setsJson = prefs.getStringList('timerSets') ?? [];
-    setState(() {
-      _timerSets.clear();
-      for (final s in setsJson) {
-        try {
-          final map = jsonDecode(s);
-          _timerSets.add(SavedTimerSet.fromJson(map));
-        } catch (_) {}
-      }
-    });
-  }
-
-  Future<void> _loadHistory() async {
-    final history = await loadHistory();
-    setState(() {
-      _history = history;
-      _totalPoints = _history.fold(0, (sum, entry) => sum + entry.totalSeconds);
-    });
-  }
-
-  void _removeTimerSet(int index) async {
-    setState(() {
-      _timerSets.removeAt(index);
-    });
-    await _saveTimerSets();
-  }
-
-  void _editTimerSet(int index) async {
-    final edited = await Navigator.push<SavedTimerSet>(
+  void _editSet(int index) async {
+    final result = await Navigator.push<SavedTimerSet>(
       context,
       MaterialPageRoute(
         builder: (context) => EditSetPage(timerSet: _timerSets[index]),
       ),
     );
-    if (edited != null) {
+    if (result != null) {
       setState(() {
-        _timerSets[index] = edited;
+        _timerSets[index] = result;
       });
-      await _saveTimerSets();
     }
   }
 
-  void _goToTimerScreen(SavedTimerSet timerSet) async {
+  void _removeSet(int index) {
+    setState(() {
+      _timerSets.removeAt(index);
+    });
+  }
+
+  void _startTimer(SavedTimerSet set) async {
     await Navigator.push(
       context,
-      MaterialPageRoute(
-        builder: (context) => TimerSetScreen(timerSet: timerSet),
-      ),
+      MaterialPageRoute(builder: (context) => TimerSetScreen(timerSet: set)),
     );
-    // Reload history after returning from timer screen
-    await _loadHistory();
-    // Reload sets in case of any changes
-    await _loadTimerSets();
-  }
-
-  Future<void> _navigateToAddSet() async {
-    final result = await Navigator.push(
-      context,
-      MaterialPageRoute(builder: (context) => const AddSetPage()),
-    );
-    if (result is SavedTimerSet) {
-      setState(() {
-        _timerSets.add(result);
-      });
-      await _saveTimerSets();
-    }
-  }
-
-  String _formatDateTime(DateTime dt) {
-    return "${dt.year}-${dt.month.toString().padLeft(2, '0')}-${dt.day.toString().padLeft(2, '0')} "
-        "${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}";
+    // No history reload needed
   }
 
   @override
@@ -124,159 +72,97 @@ class _TimerSetListPageState extends State<TimerSetListPage> {
           },
         ),
         title: const Text('Saved Timer Sets'),
-        actions: [
-          Padding(
-            padding: const EdgeInsets.only(right: 16.0),
-            child: Center(
+      ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: _addSet,
+        icon: const Icon(Icons.add),
+        label: const Text('Add Set'),
+      ),
+      body: Column(
+        children: [
+          const SizedBox(height: 24),
+          const Padding(
+            padding: EdgeInsets.only(left: 24, bottom: 8),
+            child: Align(
+              alignment: Alignment.centerLeft,
               child: Text(
-                'Total Points: $_totalPoints',
-                style: const TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 16,
-                  color: Colors.deepOrange,
-                ),
+                'Saved Sets',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
               ),
             ),
           ),
-        ],
-      ),
-      body: LayoutBuilder(
-        builder: (context, constraints) {
-          final savedSetsHeight = constraints.maxHeight * 0.6;
-          final historyHeight = constraints.maxHeight * 0.4;
-          return Column(
-            children: [
-              // Saved Sets Section (60% of screen)
-              SizedBox(
-                height: savedSetsHeight,
-                child: ListView(
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.only(
-                        left: 24,
-                        right: 24,
-                        top: 16,
-                        bottom: 8,
-                      ),
-                      child: const Text(
-                        'Saved Sets',
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 20,
-                        ),
-                      ),
-                    ),
-                    if (_timerSets.isEmpty)
-                      Padding(
+          Expanded(
+            flex: 2,
+            child: _timerSets.isEmpty
+                ? const Center(child: Text('No timer sets saved.'))
+                : ListView.builder(
+                    itemCount: _timerSets.length,
+                    itemBuilder: (context, idx) {
+                      final set = _timerSets[idx];
+                      return Padding(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 24,
-                          vertical: 8,
+                          vertical: 2,
                         ),
-                        child: const Center(
-                          child: Text('No timer sets saved.'),
-                        ),
-                      )
-                    else
-                      ..._timerSets.asMap().entries.map((entry) {
-                        final index = entry.key;
-                        final timerSet = entry.value;
-                        return Padding(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 24,
-                            vertical: 2,
-                          ),
-                          child: Card(
-                            child: ListTile(
-                              title: Text(
-                                '${timerSet.name} (${timerSet.secondsList.join(", ")}s)',
+                        child: Card(
+                          child: ListTile(
+                            leading: const Icon(
+                              Icons.timer,
+                              color: Colors.deepOrange,
+                              size: 36,
+                            ),
+                            title: Text(
+                              set.name,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
                               ),
-                              trailing: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  IconButton(
-                                    icon: const Icon(
-                                      Icons.edit,
-                                      color: Colors.blue,
-                                    ),
-                                    onPressed: () => _editTimerSet(index),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            subtitle: Text(
+                              'Stages: ${set.secondsList.length}\nSeconds: ${set.secondsList.join(", ")}',
+                              style: const TextStyle(fontSize: 14),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            onTap: () => _startTimer(set),
+                            trailing: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                IconButton(
+                                  icon: const Icon(
+                                    Icons.edit,
+                                    color: Colors.blue,
                                   ),
-                                  IconButton(
-                                    icon: const Icon(
-                                      Icons.delete,
-                                      color: Colors.red,
-                                    ),
-                                    onPressed: () => _removeTimerSet(index),
+                                  onPressed: () => _editSet(idx),
+                                ),
+                                IconButton(
+                                  icon: const Icon(
+                                    Icons.delete,
+                                    color: Colors.red,
                                   ),
-                                ],
-                              ),
-                              onTap: () => _goToTimerScreen(timerSet),
+                                  onPressed: () => _removeSet(idx),
+                                ),
+                              ],
                             ),
                           ),
-                        );
-                      }),
-                  ],
-                ),
-              ),
-              // History Section (40% of screen)
-              SizedBox(
-                height: historyHeight,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Divider(height: 32, thickness: 2),
-                    const Padding(
-                      padding: EdgeInsets.only(left: 24, bottom: 8),
-                      child: Text(
-                        'History (last 5 completed):',
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 18,
                         ),
-                      ),
-                    ),
-                    Expanded(
-                      child: _history.isEmpty
-                          ? const Padding(
-                              padding: EdgeInsets.only(left: 32, top: 8),
-                              child: Text('No history yet.'),
-                            )
-                          : ListView.builder(
-                              itemCount: _history.length,
-                              itemBuilder: (context, idx) {
-                                final entry = _history[idx];
-                                return Padding(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 24,
-                                    vertical: 2,
-                                  ),
-                                  child: Card(
-                                    color: Colors.orange.shade50,
-                                    child: ListTile(
-                                      leading: const Icon(
-                                        Icons.history,
-                                        color: Colors.deepOrange,
-                                      ),
-                                      title: Text(entry.name),
-                                      subtitle: Text(
-                                        'Completed: ${_formatDateTime(entry.completedAt)}\nPoints: ${entry.totalSeconds}',
-                                      ),
-                                    ),
-                                  ),
-                                );
-                              },
-                            ),
-                    ),
-                  ],
-                ),
+                      );
+                    },
+                  ),
+          ),
+          const Padding(
+            padding: EdgeInsets.only(left: 24, top: 16, bottom: 8),
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                'History (last 5 completed):',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
               ),
-            ],
-          );
-        },
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _navigateToAddSet,
-        icon: const Icon(Icons.add),
-        label: const Text('Add Set'),
+            ),
+          ),
+          // No history list, only the header
+          const SizedBox(height: 32),
+        ],
       ),
     );
   }

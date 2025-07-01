@@ -1,13 +1,16 @@
 import 'package:flutter/material.dart';
 import 'dart:async';
 import 'dart:math';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'add_set.dart'; // For SavedTimerSet
 import 'main_page.dart'; // For TimerSetListPage
 import 'timer_history.dart';
 
 class TimerSetScreen extends StatefulWidget {
   final SavedTimerSet timerSet;
-  const TimerSetScreen({super.key, required this.timerSet});
+  final String? userId; // Pass userId from main_page.dart
+
+  const TimerSetScreen({super.key, required this.timerSet, this.userId});
 
   @override
   State<TimerSetScreen> createState() => _TimerSetScreenState();
@@ -163,7 +166,11 @@ class _TimerSetScreenState extends State<TimerSetScreen>
       completedAt: DateTime.now(),
       totalSeconds: points,
     );
-    await saveHistoryEntry(entry);
+    // FIX: Pass userId as first argument
+    final userId = widget.userId ?? FirebaseAuth.instance.currentUser?.uid;
+    if (userId != null) {
+      await saveHistoryEntry(userId, entry);
+    }
     Future.delayed(const Duration(milliseconds: 1500), () {
       if (mounted) {
         Navigator.of(context).pushAndRemoveUntil(

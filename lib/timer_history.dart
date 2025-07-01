@@ -1,7 +1,3 @@
-import 'package:shared_preferences/shared_preferences.dart';
-import 'dart:convert';
-import 'package:shared_preferences/shared_preferences.dart';
-
 class TimerSetHistoryEntry {
   final String name;
   final DateTime completedAt;
@@ -27,28 +23,12 @@ class TimerSetHistoryEntry {
       );
 }
 
-/// Save a new history entry, keeping only the last 5.
-Future<void> saveHistoryEntry(TimerSetHistoryEntry entry) async {
-  final prefs = await SharedPreferences.getInstance();
-  final historyList = prefs.getStringList('timerHistory') ?? [];
-  historyList.insert(0, jsonEncode(entry.toJson()));
-  // Keep only the last 5
-  while (historyList.length > 5) {
-    historyList.removeLast();
-  }
-  await prefs.setStringList('timerHistory', historyList);
+// Implement these using your backend (e.g., Firestore, Supabase, etc.)
+Future<void> saveHistoryEntry(String userId, TimerSetHistoryEntry entry) async {
+  // Save entry for userId in your backend
 }
 
-/// Load the last 5 history entries.
-Future<List<TimerSetHistoryEntry>> loadHistory() async {
-  final prefs = await SharedPreferences.getInstance();
-  final historyList = prefs.getStringList('timerHistory') ?? [];
-  final List<TimerSetHistoryEntry> result = [];
-  for (final s in historyList) {
-    try {
-      final map = jsonDecode(s);
-      result.add(TimerSetHistoryEntry.fromJson(map));
-    } catch (_) {}
-  }
-  return result;
+Future<List<TimerSetHistoryEntry>> loadHistory(String userId) async {
+  // Load and return history entries for userId from your backend
+  return [];
 }

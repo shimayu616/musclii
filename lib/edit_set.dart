@@ -25,7 +25,6 @@ class _EditSetPageState extends State<EditSetPage> {
     if (_secondsControllers.isEmpty) {
       _secondsControllers.add(TextEditingController());
     }
-    // FIX: Make the list growable!
     _invalidFields = List<bool>.filled(
       _secondsControllers.length,
       false,
