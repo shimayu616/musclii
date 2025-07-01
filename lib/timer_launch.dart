@@ -156,30 +156,21 @@ class _TimerSetScreenState extends State<TimerSetScreen>
   }
 
   void _givePointsAndPop() async {
-    if (_pointsGiven) return;
-    setState(() {
-      _pointsGiven = true;
-    });
-    int points = _secondsList.fold(0, (a, b) => a + b);
-    final entry = TimerSetHistoryEntry(
-      name: widget.timerSet.name,
-      completedAt: DateTime.now(),
-      totalSeconds: points,
-    );
-    // FIX: Pass userId as first argument
-    final userId = widget.userId ?? FirebaseAuth.instance.currentUser?.uid;
-    if (userId != null) {
-      await saveHistoryEntry(userId, entry);
-    }
-    Future.delayed(const Duration(milliseconds: 1500), () {
-      if (mounted) {
-        Navigator.of(context).pushAndRemoveUntil(
-          MaterialPageRoute(builder: (context) => const TimerSetListPage()),
-          (route) => false,
-        );
-      }
-    });
+  if (_pointsGiven) return;
+  setState(() {
+    _pointsGiven = true;
+  });
+  int points = _secondsList.fold(0, (a, b) => a + b);
+  final entry = TimerSetHistoryEntry(
+    name: widget.timerSet.name,
+    completedAt: DateTime.now(),
+    totalSeconds: points,
+  );
+  // Firestore保存はmain_page.dartで行うので、ここではNavigator.popでentryを返すだけ
+  if (mounted) {
+    Navigator.pop(context, entry);
   }
+}
 
   @override
   void dispose() {

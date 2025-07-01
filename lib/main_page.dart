@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'add_set.dart';
 import 'auth_gate.dart';
 import 'timer_launch.dart';
 import 'edit_set.dart';
+import 'timer_history.dart';
 
 class TimerSetListPage extends StatefulWidget {
   const TimerSetListPage({super.key});
@@ -12,7 +14,91 @@ class TimerSetListPage extends StatefulWidget {
 }
 
 class _TimerSetListPageState extends State<TimerSetListPage> {
-  List<SavedTimerSet> _timerSets = []; // In-memory only
+  List<SavedTimerSet> _timerSets = [];
+  List<TimerSetHistoryEntry> _history = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadTimerSets();
+    _loadHistory();
+  }
+
+  Future<void> _loadTimerSets() async {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) return;
+    final snapshot = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(uid)
+        .collection('sets')
+        .get();
+    setState(() {
+      _timerSets = snapshot.docs
+          .map((doc) => SavedTimerSet.fromJson(doc.data()))
+          .toList();
+    });
+  }
+
+  Future<void> _saveTimerSet(SavedTimerSet set) async {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) return;
+    await FirebaseFirestore.instance
+        .collection('users')
+        .doc(uid)
+        .collection('sets')
+        .doc(set.name)
+        .set(set.toJson());
+    await _loadTimerSets();
+  }
+
+  Future<void> _removeTimerSet(int index) async {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) return;
+    final set = _timerSets[index];
+    await FirebaseFirestore.instance
+        .collection('users')
+        .doc(uid)
+        .collection('sets')
+        .doc(set.name)
+        .delete();
+    await _loadTimerSets();
+  }
+
+  Future<void> _loadHistory() async {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) return;
+    final snapshot = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(uid)
+        .collection('history')
+        .orderBy('completedAt', descending: true)
+        .limit(5)
+        .get();
+    setState(() {
+      _history = snapshot.docs
+          .map((doc) => TimerSetHistoryEntry.fromJson(doc.data()))
+          .toList();
+    });
+  }
+
+  Future<void> _saveHistoryEntry(TimerSetHistoryEntry entry) async {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) return;
+    final ref = FirebaseFirestore.instance
+        .collection('users')
+        .doc(uid)
+        .collection('history');
+    await ref.add(entry.toJson());
+
+    // 5件を超えたら古いものを削除
+    final snapshot = await ref.orderBy('completedAt', descending: true).get();
+    if (snapshot.docs.length > 5) {
+      for (final doc in snapshot.docs.skip(5)) {
+        await doc.reference.delete();
+      }
+    }
+    await _loadHistory();
+  }
 
   void _addSet() async {
     final result = await Navigator.push<SavedTimerSet>(
@@ -20,9 +106,7 @@ class _TimerSetListPageState extends State<TimerSetListPage> {
       MaterialPageRoute(builder: (context) => const AddSetPage()),
     );
     if (result != null) {
-      setState(() {
-        _timerSets.add(result);
-      });
+      await _saveTimerSet(result);
     }
   }
 
@@ -34,24 +118,27 @@ class _TimerSetListPageState extends State<TimerSetListPage> {
       ),
     );
     if (result != null) {
-      setState(() {
-        _timerSets[index] = result;
-      });
+      await _saveTimerSet(result);
     }
   }
 
-  void _removeSet(int index) {
-    setState(() {
-      _timerSets.removeAt(index);
-    });
+  void _removeSet(int index) async {
+    await _removeTimerSet(index);
   }
 
   void _startTimer(SavedTimerSet set) async {
-    await Navigator.push(
+    final result = await Navigator.push<TimerSetHistoryEntry>(
       context,
       MaterialPageRoute(builder: (context) => TimerSetScreen(timerSet: set)),
     );
-    // No history reload needed
+    if (result != null) {
+      await _saveHistoryEntry(result);
+    }
+  }
+
+  String _formatDateTime(DateTime dt) {
+    return "${dt.year}-${dt.month.toString().padLeft(2, '0')}-${dt.day.toString().padLeft(2, '0')} "
+        "${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}";
   }
 
   @override
@@ -160,8 +247,33 @@ class _TimerSetListPageState extends State<TimerSetListPage> {
               ),
             ),
           ),
-          // No history list, only the header
-          const SizedBox(height: 32),
+          if (_history.isNotEmpty)
+            Expanded(
+              flex: 1,
+              child: ListView(
+                children: _history.map((entry) {
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 24, vertical: 2),
+                    child: Card(
+                      color: Colors.orange.shade50,
+                      child: ListTile(
+                        leading: const Icon(
+                          Icons.history,
+                          color: Colors.deepOrange,
+                        ),
+                        title: Text(entry.name),
+                        subtitle: Text(
+                          'Completed: ${_formatDateTime(entry.completedAt)}\nPoints: ${entry.totalSeconds}',
+                        ),
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ),
+            ),
+          if (_history.isEmpty)
+            const SizedBox(height: 32),
         ],
       ),
     );
